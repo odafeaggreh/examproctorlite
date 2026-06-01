@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowRight,
   CalendarDays,
   Clock3,
   FileText,
+  Loader2,
+  Rocket,
   Search,
   Sparkles,
 } from "lucide-react";
@@ -40,8 +42,11 @@ export function ExamsOverview({
   initialExams: ExamListItemDTO[];
 }) {
   const [query, setQuery] = useState("");
-  const [exams] = useState(initialExams);
+  const [exams, setExams] = useState(initialExams);
   const [userLocale, setUserLocale] = useState<string>();
+  const [publicationError, setPublicationError] = useState<string | null>(null);
+  const [publishingExamId, setPublishingExamId] = useState<string | null>(null);
+  const [isPublishing, startPublishing] = useTransition();
 
   useEffect(() => {
     if (typeof navigator === "undefined") {
@@ -65,6 +70,39 @@ export function ExamsOverview({
       );
     });
   }, [exams, query]);
+
+  function publishExam(examId: string) {
+    setPublicationError(null);
+    setPublishingExamId(examId);
+
+    startPublishing(async () => {
+      try {
+        const response = await fetch(`/api/admin/exams/${examId}/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "published" }),
+        });
+        const payload = (await response.json()) as {
+          exam?: ExamListItemDTO;
+          error?: string;
+        };
+
+        if (!response.ok || !payload.exam) {
+          throw new Error(payload.error ?? "Could not publish this exam.");
+        }
+
+        setExams((current) =>
+          current.map((exam) => (exam.id === examId ? payload.exam! : exam)),
+        );
+      } catch (error) {
+        setPublicationError(
+          error instanceof Error ? error.message : "Could not publish this exam.",
+        );
+      } finally {
+        setPublishingExamId(null);
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -107,6 +145,12 @@ export function ExamsOverview({
               {filteredExams.length} exam{filteredExams.length === 1 ? "" : "s"}
             </p>
           </div>
+
+          {publicationError ? (
+            <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {publicationError}
+            </div>
+          ) : null}
 
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto rounded-[20px] border border-slate-100 bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.03),_0_1px_3px_rgba(0,0,0,0.01)]">
@@ -199,6 +243,24 @@ export function ExamsOverview({
                                 <ArrowRight className="h-4 w-4" />
                               </Link>
                             </Button>
+                            {exam.status === "draft" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => publishExam(exam.id)}
+                                disabled={
+                                  isPublishing && publishingExamId === exam.id
+                                }
+                                className="gap-2 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+                              >
+                                {isPublishing && publishingExamId === exam.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Rocket className="h-4 w-4" />
+                                )}
+                                Publish
+                              </Button>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -294,6 +356,22 @@ export function ExamsOverview({
                           <ArrowRight className="h-4 w-4" />
                         </Link>
                       </Button>
+                      {exam.status === "draft" ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => publishExam(exam.id)}
+                          disabled={isPublishing && publishingExamId === exam.id}
+                          className="gap-2 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          {isPublishing && publishingExamId === exam.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Rocket className="h-4 w-4" />
+                          )}
+                          Publish
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

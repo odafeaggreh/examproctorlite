@@ -117,3 +117,7 @@ export const createSharedAccessCodeSchema = z.object({
   maxUses: z.coerce.number().int().positive().max(5000),
   expiresInDays: z.coerce.number().int().positive().max(365).optional(),
 });
+
+export const updateExamPublicationStatusSchema = z.object({
+  status: z.enum(["draft", "published", "archived"]),
+});

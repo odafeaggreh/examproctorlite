@@ -479,6 +479,10 @@ export function ExamSheetWorkflow({
   const [emailInput, setEmailInput] = useState("");
   const [emailInputError, setEmailInputError] = useState<string | null>(null);
   const [allEmailsDialogOpen, setAllEmailsDialogOpen] = useState(false);
+  const [isSendingAccessCodeEmails, setIsSendingAccessCodeEmails] =
+    useState(false);
+  const [emailSendError, setEmailSendError] = useState<string | null>(null);
+  const [emailSendSuccess, setEmailSendSuccess] = useState<string | null>(null);
 
   const visibleEmailRecipients = emailRecipients.slice(
     0,
@@ -823,12 +827,15 @@ export function ExamSheetWorkflow({
     });
     setEmailInput("");
     setEmailInputError(null);
+    setEmailSendError(null);
+    setEmailSendSuccess(null);
   }
 
   function removeEmailRecipient(email: string) {
     setEmailRecipients((current) =>
       current.filter((recipient) => recipient !== email),
     );
+    setEmailSendSuccess(null);
   }
 
   function handleEmailInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -861,7 +868,87 @@ export function ExamSheetWorkflow({
   function openEmailDialog() {
     setEmailInput("");
     setEmailInputError(null);
+    setEmailSendError(null);
     setEmailDialogOpen(true);
+  }
+
+  function getEmailRecipientsForSend() {
+    const nextEmails = Array.from(
+      new Set([...emailRecipients, ...splitEmailInput(emailInput)]),
+    );
+
+    if (nextEmails.length === 0) {
+      setEmailInputError("Add at least one recipient before sending.");
+      return null;
+    }
+
+    const invalidEmail = nextEmails.find((email) => !EMAIL_PATTERN.test(email));
+
+    if (invalidEmail) {
+      setEmailInputError(`"${invalidEmail}" is not a valid email address.`);
+      return null;
+    }
+
+    setEmailRecipients(nextEmails);
+    setEmailInput("");
+    setEmailInputError(null);
+    return nextEmails;
+  }
+
+  async function handleSendAccessCodeEmails() {
+    const recipients = getEmailRecipientsForSend();
+
+    if (!recipients || !createdExam?.id) {
+      return;
+    }
+
+    setIsSendingAccessCodeEmails(true);
+    setEmailSendError(null);
+    setEmailSendSuccess(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/exams/${createdExam.id}/access-code/email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: recipients }),
+        },
+      );
+      const payload = (await response.json()) as {
+        result?: {
+          sentCount: number;
+          failedCount: number;
+        };
+        error?: string;
+      };
+
+      if (!response.ok || !payload.result) {
+        throw new Error(payload.error ?? "Could not send the access code.");
+      }
+
+      setEmailSendSuccess(
+        `Access code sent to ${payload.result.sentCount} recipient${
+          payload.result.sentCount === 1 ? "" : "s"
+        }.`,
+      );
+
+      if (payload.result.failedCount > 0) {
+        setEmailSendError(
+          `${payload.result.failedCount} email${
+            payload.result.failedCount === 1 ? "" : "s"
+          } could not be sent.`,
+        );
+      }
+    } catch (sendError) {
+      setEmailSendError(
+        sendError instanceof Error
+          ? sendError.message
+          : "Could not send the access code.",
+      );
+    } finally {
+      setIsSendingAccessCodeEmails(false);
+    }
   }
 
   async function handleFinalSubmit() {
@@ -1314,6 +1401,16 @@ export function ExamSheetWorkflow({
                   {emailInputError}
                 </p>
               ) : null}
+              {emailSendSuccess ? (
+                <p className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  {emailSendSuccess}
+                </p>
+              ) : null}
+              {emailSendError ? (
+                <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {emailSendError}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -1328,10 +1425,21 @@ export function ExamSheetWorkflow({
             </Button>
             <Button
               type="button"
-              disabled
-              className="rounded-full bg-blue-600 px-5 font-semibold text-white"
+              onClick={handleSendAccessCodeEmails}
+              disabled={
+                isSendingAccessCodeEmails ||
+                (emailRecipients.length === 0 && !emailInput.trim())
+              }
+              className="rounded-full bg-blue-600 px-5 font-semibold text-white hover:bg-blue-700"
             >
-              Send emails
+              {isSendingAccessCodeEmails ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send emails"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -645,6 +645,19 @@ export async function createOrReplaceSharedExamAccessCode({
   return serializeExamAccessCodeRecord(snapshot.id, snapshot.data() ?? {});
 }
 
+export async function getSharedExamAccessCode(examId: string) {
+  const snapshot = await getAdminDb()
+    .collection("examAccessCodes")
+    .doc(examId)
+    .get();
+
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  return serializeExamAccessCodeRecord(snapshot.id, snapshot.data() ?? {});
+}
+
 export async function getExamAssignmentSummary(
   examId: string,
 ): Promise<ExamAssignmentSummary> {

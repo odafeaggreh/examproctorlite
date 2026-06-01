@@ -387,3 +387,76 @@ export async function updateExamRecord({
   const updatedSnapshot = await documentReference.get();
   return serializeExamRecord(updatedSnapshot.id, updatedSnapshot.data() ?? {});
 }
+
+async function hasActiveExamAccessCode(examId: string) {
+  const snapshot = await getAdminDb()
+    .collection("examAccessCodes")
+    .doc(examId)
+    .get();
+
+  return snapshot.exists && snapshot.data()?.status === "active";
+}
+
+export async function updateExamPublicationStatus({
+  examId,
+  status,
+}: {
+  examId: string;
+  status: ExamStatus;
+}) {
+  const db = getAdminDb();
+  const documentReference = db.collection("exams").doc(examId);
+  const snapshot = await documentReference.get();
+
+  if (!snapshot.exists) {
+    throw new Error("Exam not found");
+  }
+
+  const exam = serializeExamRecord(snapshot.id, snapshot.data() ?? {});
+
+  if (status === "published") {
+    if (!exam.title.trim()) {
+      throw new Error("Add an exam title before publishing.");
+    }
+
+    if (!exam.startAt || !exam.endAt) {
+      throw new Error("Set the exam window before publishing.");
+    }
+
+    if (new Date(exam.endAt).getTime() <= new Date(exam.startAt).getTime()) {
+      throw new Error("Set an exam end time after the start time.");
+    }
+
+    if (exam.questionCount < 1) {
+      throw new Error("Add at least one question before publishing.");
+    }
+
+    if (!(await hasActiveExamAccessCode(examId))) {
+      throw new Error("Create an active access code before publishing.");
+    }
+
+    if (
+      exam.hasManualReviewQuestions &&
+      exam.resultReleaseMode === "auto_release_on_submission"
+    ) {
+      throw new Error(
+        "This exam contains manual-review questions and cannot auto-release results.",
+      );
+    }
+  }
+
+  await documentReference.set(
+    {
+      status,
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(status === "published" && !exam.publishedAt
+        ? { publishedAt: FieldValue.serverTimestamp() }
+        : {}),
+      ...(status !== "published" ? { publishedAt: null } : {}),
+    },
+    { merge: true },
+  );
+
+  const updatedSnapshot = await documentReference.get();
+  return serializeExamRecord(updatedSnapshot.id, updatedSnapshot.data() ?? {});
+}

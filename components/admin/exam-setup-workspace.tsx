@@ -4,14 +4,19 @@ import Link from "next/link";
 import type { ChangeEvent, FormEvent } from "react";
 import { useMemo, useState, useTransition } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Archive,
   CheckCircle2,
   CircleDotDashed,
   FileSpreadsheet,
   ListChecks,
   Loader2,
+  MoreHorizontal,
   Plus,
+  Rocket,
+  RotateCcw,
   UsersRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,12 +36,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format/date";
 import type { ExamListItemDTO } from "@/lib/dto/exams";
 import type {
   ExamAssignmentSummary,
+  ExamStatus,
   PlatformDefaults,
   StudentGroupRecord,
 } from "@/lib/types/exam-management";
@@ -67,6 +79,41 @@ function StepBadge({
   }
 
   return <Badge variant="outline">Pending</Badge>;
+}
+
+function ReadinessItem({
+  status,
+  title,
+  description,
+}: {
+  status: "ready" | "warning" | "blocked";
+  title: string;
+  description: string;
+}) {
+  const Icon =
+    status === "ready"
+      ? CheckCircle2
+      : status === "warning"
+        ? AlertTriangle
+        : CircleDotDashed;
+  const classes =
+    status === "ready"
+      ? "border-green-100 bg-green-50/70 text-green-700"
+      : status === "warning"
+        ? "border-amber-100 bg-amber-50/70 text-amber-700"
+        : "border-red-100 bg-red-50/70 text-red-700";
+
+  return (
+    <div className={`flex gap-3 rounded-2xl border px-4 py-3 ${classes}`}>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed opacity-80">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function createCandidateRow(values?: Partial<CandidateRow>): CandidateRow {
@@ -249,13 +296,16 @@ export function ExamSetupWorkspace({
   initialGroups: StudentGroupRecord[];
   initialSummary: ExamAssignmentSummary;
 }) {
-  const [exam] = useState(initialExam);
+  const [exam, setExam] = useState(initialExam);
   const [summary, setSummary] = useState(initialSummary);
   const [showStepOneReview, setShowStepOneReview] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publicationError, setPublicationError] = useState<string | null>(null);
   const [stepTwoError, setStepTwoError] = useState<string | null>(null);
   const [stepTwoSuccessVisible, setStepTwoSuccessVisible] = useState(false);
   const [isSavingStepTwo, startSavingStepTwo] = useTransition();
   const [isCreatingGroup, startCreatingGroup] = useTransition();
+  const [isUpdatingPublication, startUpdatingPublication] = useTransition();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadFileName, setUploadFileName] = useState("");
   const [manualGroupOpen, setManualGroupOpen] = useState(
@@ -305,6 +355,83 @@ export function ExamSetupWorkspace({
     () => candidateCount(manualForm.candidates),
     [manualForm.candidates],
   );
+  const readinessItems = useMemo(() => {
+    const hasValidSchedule =
+      Boolean(exam.startAt && exam.endAt) &&
+      new Date(exam.endAt).getTime() > new Date(exam.startAt).getTime();
+
+    return [
+      {
+        key: "details",
+        status: exam.title.trim() ? ("ready" as const) : ("blocked" as const),
+        title: "Exam details complete",
+        description: exam.title.trim()
+          ? "The exam has a title and saved setup details."
+          : "Add an exam title before publishing.",
+        blocksPublish: !exam.title.trim(),
+      },
+      {
+        key: "schedule",
+        status: hasValidSchedule ? ("ready" as const) : ("blocked" as const),
+        title: "Exam window set",
+        description: hasValidSchedule
+          ? "Candidates can only start when the configured window opens."
+          : "Set a valid start and end time before publishing.",
+        blocksPublish: !hasValidSchedule,
+      },
+      {
+        key: "questions",
+        status: exam.questionCount > 0 ? ("ready" as const) : ("blocked" as const),
+        title: "Questions attached",
+        description:
+          exam.questionCount > 0
+            ? `${exam.questionCount} question${
+                exam.questionCount === 1 ? "" : "s"
+              } attached to this exam.`
+            : "Add at least one question before publishing.",
+        blocksPublish: exam.questionCount < 1,
+      },
+      {
+        key: "access-code",
+        status: summary.hasSharedAccessCode
+          ? ("ready" as const)
+          : ("blocked" as const),
+        title: "Access code ready",
+        description: summary.hasSharedAccessCode
+          ? `Shared code ${summary.sharedAccessCode?.code} is active.`
+          : "Create an active access code before publishing.",
+        blocksPublish: !summary.hasSharedAccessCode,
+      },
+      {
+        key: "candidates",
+        status:
+          summary.totalReachableCandidates > 0
+            ? ("ready" as const)
+            : ("warning" as const),
+        title: "Candidate access prepared",
+        description:
+          summary.totalReachableCandidates > 0
+            ? `${summary.totalReachableCandidates} candidate${
+                summary.totalReachableCandidates === 1 ? "" : "s"
+              } linked to this exam.`
+            : "No candidates are linked yet. You can still publish and share the code manually.",
+        blocksPublish: false,
+      },
+      {
+        key: "manual-review",
+        status: exam.hasManualReviewQuestions
+          ? ("warning" as const)
+          : ("ready" as const),
+        title: "Result release reviewed",
+        description: exam.hasManualReviewQuestions
+          ? "This exam has manual-review questions, so review answers before releasing final results."
+          : "No manual-review warning detected for this exam.",
+        blocksPublish: false,
+      },
+    ];
+  }, [exam, summary]);
+  const publishBlockers = readinessItems.filter((item) => item.blocksPublish);
+  const canPublish = publishBlockers.length === 0;
 
   async function refreshSummary() {
     const response = await fetch(`/api/admin/exams/${exam.id}/assignment-summary`);
@@ -319,6 +446,39 @@ export function ExamSetupWorkspace({
 
     setSummary(payload.summary);
     return payload.summary;
+  }
+
+  async function updatePublicationStatus(nextStatus: ExamStatus) {
+    setPublicationError(null);
+
+    startUpdatingPublication(async () => {
+      try {
+        const response = await fetch(`/api/admin/exams/${exam.id}/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: nextStatus }),
+        });
+        const payload = (await response.json()) as {
+          exam?: ExamListItemDTO;
+          error?: string;
+        };
+
+        if (!response.ok || !payload.exam) {
+          throw new Error(
+            payload.error ?? "Could not update the exam publication status.",
+          );
+        }
+
+        setExam(payload.exam);
+        setPublishDialogOpen(false);
+      } catch (error) {
+        setPublicationError(
+          error instanceof Error
+            ? error.message
+            : "Could not update the exam publication status.",
+        );
+      }
+    });
   }
 
   async function persistCandidateGroup(form: CandidateGroupForm) {
@@ -617,6 +777,85 @@ export function ExamSetupWorkspace({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent className="flex h-[100dvh] max-w-none flex-col overflow-hidden rounded-none border-slate-100 p-0 sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:max-w-2xl sm:rounded-[28px]">
+          <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <Rocket className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-slate-900">
+                  Publish exam
+                </DialogTitle>
+                <DialogDescription className="mt-2 text-sm text-slate-500">
+                  Publishing makes this exam available to candidates with the
+                  access code once the exam window opens.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50/50 px-6 py-6">
+            <div className="rounded-[22px] border border-slate-100 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Readiness checklist
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Fix blockers before publishing. Warnings are allowed, but they
+                should be intentional.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {readinessItems.map((item) => (
+                <ReadinessItem
+                  key={item.key}
+                  status={item.status}
+                  title={item.title}
+                  description={item.description}
+                />
+              ))}
+            </div>
+
+            {publicationError ? (
+              <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {publicationError}
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-white px-6 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPublishDialogOpen(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!canPublish || isUpdatingPublication}
+              onClick={() => updatePublicationStatus("published")}
+              className="rounded-full bg-blue-600 px-5 font-semibold text-white hover:bg-blue-700"
+            >
+              {isUpdatingPublication ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  Publish exam
+                  <Rocket className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <Button asChild className="w-fit gap-2" variant="ghost">
@@ -642,13 +881,78 @@ export function ExamSetupWorkspace({
           </div>
         </div>
 
-        <Button asChild variant="outline" className="gap-2">
-          <Link href={`/admin/exams/${exam.id}/edit`}>
-            Edit exam details
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="gap-2">
+            <Link href={`/admin/exams/${exam.id}/edit`}>
+              Edit exam details
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+
+          {exam.status === "draft" ? (
+            <Button
+              type="button"
+              onClick={() => {
+                setPublicationError(null);
+                setPublishDialogOpen(true);
+              }}
+              className="gap-2 rounded-full bg-blue-600 px-5 font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              <Rocket className="h-4 w-4" />
+              Publish exam
+            </Button>
+          ) : null}
+
+          {exam.status === "published" ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" className="gap-2">
+                  Publication actions
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2">
+                <DropdownMenuItem
+                  onClick={() => updatePublicationStatus("draft")}
+                  disabled={isUpdatingPublication}
+                  className="rounded-xl px-3 py-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Unpublish to draft
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => updatePublicationStatus("archived")}
+                  disabled={isUpdatingPublication}
+                  variant="destructive"
+                  className="rounded-xl px-3 py-2"
+                >
+                  <Archive className="h-4 w-4" />
+                  Archive exam
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+
+          {exam.status === "archived" ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isUpdatingPublication}
+              onClick={() => updatePublicationStatus("draft")}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restore to draft
+            </Button>
+          ) : null}
+        </div>
       </div>
+
+      {publicationError && !publishDialogOpen ? (
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {publicationError}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-3">
         {steps.map((step, index) => {
