@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "examproctorlite-dev"
+  },
+  "targets": {},
+  "etags": {
+    "examproctorlite-dev": {
+      "extensionInstances": {}
+    }
+  },
+  "dataconnectEmulatorConfig": {}
+}
