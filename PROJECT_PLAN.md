@@ -889,11 +889,19 @@ This project should follow `design.md` as the visual design reference.
 
 Recommended next implementation steps:
 
-1. Finish the Exams page UI and make exam create/edit flows feel production-ready.
-2. Build the student-side `My Exams` and access-code redemption flow.
-3. Add `examAccessCodes` and `examAssignments` persistence.
-4. Introduce question-bank management and CSV import.
-5. Implement attempt lifecycle and grading state transitions.
+1. Build the student-side `My Exams` and access-code redemption flow.
+2. Implement attempt lifecycle and grading state transitions.
+3. Add admin attempt review screens for manual-review answers.
+4. Add result release and score-email flows.
+5. Expand reporting with exam-level and platform-level aggregates.
+
+Current admin exam status:
+
+- `/admin/exams` provides the minimal exam list with publish/review actions.
+- `/admin/exams/create` and `/admin/exams/[examId]/edit` manage exam content, settings, and question snapshots.
+- `/admin/exams/[examId]` is now the exam overview page for setup details, candidate attempts, scores, and manual-review visibility.
+- `/admin/candidates/[candidateId]/exams/[examId]` is the candidate-level exam result page for score snapshots, answer review, and release readiness.
+- Candidate-result rows currently read from the planned `attempts` collection, with temporary dummy data in `/constants` while the student attempt flow is being designed.
 
 ---
 
@@ -921,5 +929,6 @@ The project can be considered functionally successful when:
 - sidebar: [app-sidebar.tsx](/C:/Users/USER/OneDrive/Desktop/codes/exampro/components/app-sidebar.tsx)
 - sidebar primitives: [sidebar.tsx](/C:/Users/USER/OneDrive/Desktop/codes/exampro/components/ui/sidebar.tsx)
 - exam page: [page.tsx](/C:/Users/USER/OneDrive/Desktop/codes/exampro/app/(admin)/admin/exams/page.tsx)
+- exam detail overview: [page.tsx](/C:/Users/USER/OneDrive/Desktop/codes/exampro/app/(admin)/admin/exams/[examId]/page.tsx)
+- candidate exam result: [page.tsx](/C:/Users/USER/OneDrive/Desktop/codes/exampro/app/(admin)/admin/candidates/[candidateId]/exams/[examId]/page.tsx)
 - exam overview: [exams-overview.tsx](/C:/Users/USER/OneDrive/Desktop/codes/exampro/components/admin/exams-overview.tsx)
-

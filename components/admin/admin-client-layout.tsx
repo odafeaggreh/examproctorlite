@@ -38,9 +38,11 @@ export function AdminClientLayout({
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar session={session} />
-        <SidebarInset className="bg-slate-50/80">
+        <SidebarInset className="min-w-0 overflow-x-hidden bg-slate-50/80">
           <MobileSidebarToggle />
-          <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">{children}</div>
+          <div className="flex min-w-0 max-w-full flex-1 flex-col gap-6 overflow-x-hidden p-6 lg:p-8">
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

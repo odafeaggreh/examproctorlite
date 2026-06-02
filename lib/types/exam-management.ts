@@ -16,6 +16,13 @@ export type ResultReleaseMode =
   | "manual_release"
   | "auto_release_on_submission"
   | "release_after_review";
+export type ExamAttemptStatus =
+  | "not_started"
+  | "in_progress"
+  | "submitted"
+  | "pending_review"
+  | "finalized"
+  | "released";
 
 export interface PlatformDefaults {
   defaultAccessCodeMaxUses: number;
@@ -143,6 +150,29 @@ export interface ExamQuestionRecord {
   order: number;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+export interface ExamAttemptRecord {
+  id: string;
+  examId: string;
+  studentUid: string;
+  assignmentId?: string;
+  status: ExamAttemptStatus;
+  startedAt: string | null;
+  submittedAt: string | null;
+  autoSubmittedAt: string | null;
+  timeLimitMinutes: number;
+  autoScore?: number;
+  manualScore?: number;
+  score?: number;
+  percentage?: number;
+  requiresManualReview: boolean;
+  emailSent: boolean;
+  examSnapshot?: Record<string, unknown>;
+  studentSnapshot?: {
+    name?: string;
+    email?: string;
+  };
 }
 
 export interface CsvImportPreviewRow {
