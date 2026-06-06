@@ -74,8 +74,8 @@ export function AppSidebar({ session, ...props }: AppSidebarProps) {
       icon: FileText,
     },
     {
-      href: "/admin/students",
-      label: "Students",
+      href: "/admin/candidates",
+      label: "Candidates",
       icon: Users,
     },
     {
