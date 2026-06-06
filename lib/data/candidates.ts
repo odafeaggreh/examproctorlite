@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import type {
   CandidateExamHistoryStatus,
@@ -136,6 +136,58 @@ export async function getCandidateUserRecord(candidateId: string) {
   );
 
   return user.role === "student" ? user : null;
+}
+
+export async function updateCandidateUserStatus({
+  actorUid,
+  candidateId,
+  status,
+}: {
+  actorUid: string;
+  candidateId: string;
+  status: CandidateRosterStatus;
+}) {
+  const db = getAdminDb();
+  const userReference = db.collection("users").doc(candidateId);
+  const userSnapshot = await userReference.get();
+
+  if (!userSnapshot.exists) {
+    throw new Error("Candidate not found");
+  }
+
+  const user = serializeCandidateUserRecord(
+    userSnapshot.id,
+    userSnapshot.data() ?? {},
+  );
+
+  if (user.role !== "student") {
+    throw new Error("Only student accounts can be managed here.");
+  }
+
+  const updatedAt = new Date().toISOString();
+
+  await userReference.set(
+    {
+      status,
+      updatedAt,
+    },
+    { merge: true },
+  );
+
+  await db.collection("auditLogs").add({
+    actorUid,
+    action: "candidate.status.updated",
+    entityType: "user",
+    entityId: candidateId,
+    metadata: { status },
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  return {
+    ...user,
+    status,
+    updatedAt,
+  };
 }
 
 export async function listAllExamCandidateRecords() {

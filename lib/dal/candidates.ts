@@ -5,9 +5,14 @@ import {
   listAllExamCandidateRecords,
   listCandidateUserRecords,
   listExamCandidateRecordsForCandidate,
+  updateCandidateUserStatus,
 } from "@/lib/data/candidates";
 import { listExams } from "@/lib/data/exams";
-import { toAdminCandidateDTO } from "@/lib/dto/candidates";
+import {
+  toAdminCandidateDTO,
+  toCandidateStatusDTO,
+} from "@/lib/dto/candidates";
+import type { CandidateRosterStatus } from "@/lib/types/exam-management";
 
 export async function getAdminCandidates() {
   const [users, examCandidates, exams] = await Promise.all([
@@ -46,4 +51,22 @@ export async function getAdminCandidateById(candidateId: string) {
     exams,
     examCandidates,
   });
+}
+
+export async function updateAdminCandidateStatus({
+  actorUid,
+  candidateId,
+  status,
+}: {
+  actorUid: string;
+  candidateId: string;
+  status: CandidateRosterStatus;
+}) {
+  const candidate = await updateCandidateUserStatus({
+    actorUid,
+    candidateId,
+    status,
+  });
+
+  return toCandidateStatusDTO(candidate);
 }

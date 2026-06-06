@@ -31,9 +31,11 @@ import {
 export function CandidatesRosterTable({
   candidates,
   onStatusChange,
+  updatingCandidateId,
 }: {
   candidates: AdminCandidate[];
-  onStatusChange: (uid: string, status: CandidateRosterStatus) => void;
+  onStatusChange: (uid: string, status: CandidateRosterStatus) => Promise<void>;
+  updatingCandidateId: string | null;
 }) {
   const columns = useMemo<ColumnDef<AdminCandidate>[]>(
     () => [
@@ -113,12 +115,13 @@ export function CandidatesRosterTable({
             <CandidateActionsMenu
               candidate={row.original}
               onStatusChange={onStatusChange}
+              isUpdating={updatingCandidateId === row.original.uid}
             />
           </div>
         ),
       },
     ],
-    [onStatusChange],
+    [onStatusChange, updatingCandidateId],
   );
 
   const table = useReactTable({
@@ -198,6 +201,7 @@ export function CandidatesRosterTable({
               key={candidate.uid}
               candidate={candidate}
               onStatusChange={onStatusChange}
+              isUpdating={updatingCandidateId === candidate.uid}
             />
           ))
         )}

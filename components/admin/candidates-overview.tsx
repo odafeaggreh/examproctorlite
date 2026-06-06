@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Search, Users } from "lucide-react";
+import { toast } from "sonner";
 
 import type {
   AdminCandidate,
@@ -17,6 +18,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+type CandidateStatusResponse = {
+  uid: string;
+  status: CandidateRosterStatus;
+};
+
 export function CandidatesOverview({
   initialCandidates,
 }: {
@@ -24,6 +30,10 @@ export function CandidatesOverview({
 }) {
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState(initialCandidates);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [updatingCandidateId, setUpdatingCandidateId] = useState<string | null>(
+    null,
+  );
 
   const filteredCandidates = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -40,11 +50,52 @@ export function CandidatesOverview({
     });
   }, [candidates, query]);
 
-  function updateCandidateStatus(uid: string, status: CandidateRosterStatus) {
-    setCandidates((currentCandidates) =>
-      currentCandidates.map((candidate) =>
-        candidate.uid === uid ? { ...candidate, status } : candidate,
-      ),
+  async function updateCandidateStatus(
+    uid: string,
+    status: CandidateRosterStatus,
+  ) {
+    setStatusError(null);
+    setUpdatingCandidateId(uid);
+
+    try {
+      const response = await fetch(`/api/admin/candidates/${uid}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const payload = (await response.json()) as {
+        candidate?: CandidateStatusResponse;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.candidate) {
+        throw new Error(payload.error ?? "Could not update candidate status.");
+      }
+
+      setCandidates((currentCandidates) =>
+        currentCandidates.map((candidate) =>
+          candidate.uid === payload.candidate!.uid
+            ? { ...candidate, status: payload.candidate!.status }
+            : candidate,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not update candidate status.";
+
+      setStatusError(message);
+      toast.error(message);
+      throw error;
+    } finally {
+      setUpdatingCandidateId(null);
+    }
+
+    toast.success(
+      status === "active"
+        ? "Candidate account activated."
+        : "Candidate account deactivated.",
     );
   }
 
@@ -79,9 +130,16 @@ export function CandidatesOverview({
           </p>
         </div>
 
+        {statusError ? (
+          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {statusError}
+          </div>
+        ) : null}
+
         <CandidatesRosterTable
           candidates={filteredCandidates}
           onStatusChange={updateCandidateStatus}
+          updatingCandidateId={updatingCandidateId}
         />
       </CardContent>
     </Card>

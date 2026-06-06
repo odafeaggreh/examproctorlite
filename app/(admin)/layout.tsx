@@ -1,4 +1,5 @@
 import { AdminClientLayout } from "@/components/admin/admin-client-layout";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { requireAdminSession } from "@/lib/auth/server";
 
@@ -17,6 +18,7 @@ export default async function AdminLayout({
   return (
     <TooltipProvider>
       <AdminClientLayout session={session}>{children}</AdminClientLayout>
+      <Toaster richColors position="top-right" />
     </TooltipProvider>
   );
 }

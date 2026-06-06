@@ -5,10 +5,16 @@ import type {
   AdminCandidateExamHistoryItem,
   AdminCandidateExamStats,
   CandidateExamHistoryStatus,
+  CandidateRosterStatus,
   CandidateUserRecord,
   ExamCandidateRecord,
   ExamRecord,
 } from "@/lib/types/exam-management";
+
+export interface CandidateStatusDTO {
+  uid: string;
+  status: CandidateRosterStatus;
+}
 
 function isCompletedStatus(status: CandidateExamHistoryStatus) {
   return (
@@ -125,5 +131,14 @@ export function toAdminCandidateDTO({
     examHistory: sortedExamCandidates.map((examCandidate) =>
       toExamHistoryItem({ examCandidate, examTitleById }),
     ),
+  };
+}
+
+export function toCandidateStatusDTO(
+  candidate: { uid: string; status: CandidateRosterStatus },
+): CandidateStatusDTO {
+  return {
+    uid: candidate.uid,
+    status: candidate.status,
   };
 }

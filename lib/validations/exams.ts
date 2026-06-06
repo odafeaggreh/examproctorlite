@@ -96,6 +96,10 @@ export const updateUserRoleSchema = z.object({
   role: z.enum(["student", "admin", "superAdmin"]),
 });
 
+export const updateCandidateStatusSchema = z.object({
+  status: z.enum(["active", "inactive"]),
+});
+
 export const createStudentGroupSchema = z.object({
   name: z.string().trim().min(1, "Group name is required").max(120),
   description: z.string().trim().max(300).optional().default(""),

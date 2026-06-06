@@ -14,10 +14,12 @@ import {
 
 export function CandidateMobileCard({
   candidate,
+  isUpdating,
   onStatusChange,
 }: {
   candidate: AdminCandidate;
-  onStatusChange: (uid: string, status: CandidateRosterStatus) => void;
+  isUpdating: boolean;
+  onStatusChange: (uid: string, status: CandidateRosterStatus) => Promise<void>;
 }) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02),_0_1px_2px_rgba(0,0,0,0.01)]">
@@ -36,6 +38,7 @@ export function CandidateMobileCard({
         </div>
         <CandidateActionsMenu
           candidate={candidate}
+          isUpdating={isUpdating}
           onStatusChange={onStatusChange}
         />
       </div>
