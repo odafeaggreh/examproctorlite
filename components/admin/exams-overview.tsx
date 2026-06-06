@@ -4,17 +4,15 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Archive,
-  ArrowRight,
   CalendarDays,
+  ChartNoAxesColumnIncreasing,
   Loader2,
   MoreVertical,
   PencilLine,
   Rocket,
   RotateCcw,
   Search,
-  Settings2,
   Sparkles,
-  Trophy,
 } from "lucide-react";
 import {
   flexRender,
@@ -89,8 +87,8 @@ function ExamActionsMenu({
       <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2">
         <DropdownMenuItem asChild className="rounded-xl px-3 py-2">
           <Link href={`/admin/exams/${exam.id}`}>
-            <Settings2 className="h-4 w-4" />
-            Open setup
+            <ChartNoAxesColumnIncreasing className="h-4 w-4" />
+            View overview
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="rounded-xl px-3 py-2">
@@ -167,10 +165,15 @@ function PrimaryExamAction({
 
   if (exam.status === "published") {
     return (
-      <Button asChild size="sm" variant="outline" className="gap-2 rounded-full">
-        <Link href={`/admin/exams/${exam.id}/results`}>
-          <Trophy className="h-4 w-4" />
-          Review results
+      <Button
+        asChild
+        size="sm"
+        variant="outline"
+        className="gap-2 rounded-full"
+      >
+        <Link href={`/admin/exams/${exam.id}`}>
+          <ChartNoAxesColumnIncreasing className="h-4 w-4" />
+          View overview
         </Link>
       </Button>
     );
@@ -278,7 +281,7 @@ export function ExamsOverview({
                   {exam.status}
                 </Badge>
               </div>
-              <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+              <p className="mt-1 max-w-[240px] truncate text-xs text-slate-500">
                 {exam.description || "No description yet."}
               </p>
             </div>
@@ -326,7 +329,10 @@ export function ExamsOverview({
         header: "Status",
         cell: ({ row }) => (
           <div className="min-w-[140px] space-y-1">
-            <Badge variant={statusVariant(row.original.status)} className="capitalize">
+            <Badge
+              variant={statusVariant(row.original.status)}
+              className="capitalize"
+            >
               {row.original.status}
             </Badge>
             <p className="text-xs text-slate-500 capitalize">
@@ -375,9 +381,6 @@ export function ExamsOverview({
       <Card className="w-full max-w-full min-w-0 overflow-hidden rounded-[24px] border-slate-100 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.03),_0_1px_3px_rgba(0,0,0,0.01)]">
         <CardHeader className="flex-col gap-6 border-b border-slate-100 bg-white/90 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6">
           <div>
-            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <Sparkles className="h-5 w-5" />
-            </div>
             <CardTitle className="text-[1.25rem] tracking-[-0.01em] text-slate-900">
               Your exams
             </CardTitle>
@@ -390,10 +393,7 @@ export function ExamsOverview({
             asChild
             className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
           >
-            <Link href="/admin/exams/create">
-              <Sparkles className="h-4 w-4" />
-              Create exam
-            </Link>
+            <Link href="/admin/exams/create">Create exam</Link>
           </Button>
         </CardHeader>
         <CardContent className="w-full max-w-full min-w-0 space-y-6 overflow-hidden bg-slate-50/40 p-4 sm:p-6">
@@ -483,7 +483,8 @@ export function ExamsOverview({
               </div>
             ) : (
               filteredExams.map((exam) => {
-                const isUpdating = isUpdatingStatus && updatingExamId === exam.id;
+                const isUpdating =
+                  isUpdatingStatus && updatingExamId === exam.id;
 
                 return (
                   <div
@@ -532,7 +533,7 @@ export function ExamsOverview({
                         </div>
                         <div>
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                            Results
+                            Release
                           </span>
                           <p className="mt-1 capitalize text-slate-700">
                             {exam.resultReleaseMode.replaceAll("_", " ")}

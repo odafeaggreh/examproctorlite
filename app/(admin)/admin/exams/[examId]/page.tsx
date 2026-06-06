@@ -29,13 +29,152 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAdminExamOverview } from "@/lib/dal/exam-overview";
+import { getExamAssignmentSummary } from "@/lib/data/exam-setup";
+import { getAdminExamById } from "@/lib/dal/exams";
 import type { ExamCandidateResultDTO } from "@/lib/dto/exam-results";
+import { timestampToIso } from "@/lib/format/date-utils";
+import { getAdminDb } from "@/lib/firebase/admin";
 import type {
   ExamAttemptStatus,
   ExamStatus,
   ResultReleaseMode,
 } from "@/lib/types/exam-management";
+
+type ExamResultSummary = {
+  totalAttempts: number;
+  completedAttempts: number;
+  averageScore: number | null;
+  averagePercentage: number | null;
+  pendingManualReviews: number;
+  passCount: number;
+};
+
+function optionalNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeAttemptStatus(value: unknown): ExamAttemptStatus {
+  if (
+    value === "not_started" ||
+    value === "in_progress" ||
+    value === "submitted" ||
+    value === "pending_review" ||
+    value === "finalized" ||
+    value === "released"
+  ) {
+    return value;
+  }
+
+  if (value === "graded") {
+    return "finalized";
+  }
+
+  return "not_started";
+}
+
+function hasCompletedAttempt(status: ExamAttemptStatus) {
+  return (
+    status === "submitted" ||
+    status === "pending_review" ||
+    status === "finalized" ||
+    status === "released"
+  );
+}
+
+function serializeExamCandidateResult(
+  id: string,
+  data: Record<string, unknown>,
+): ExamCandidateResultDTO {
+  const candidateId = String(data.candidateId ?? id);
+  const score = optionalNumber(data.score);
+  const percentage = optionalNumber(data.percentage);
+  const pendingManualReviewCount = optionalNumber(data.pendingManualReviewCount);
+
+  return {
+    id,
+    candidateId,
+    candidateName:
+      String(data.candidateName ?? data.studentName ?? "").trim() ||
+      "Unnamed candidate",
+    candidateEmail:
+      String(data.candidateEmail ?? data.studentEmail ?? "").trim() ||
+      "No email",
+    status: normalizeAttemptStatus(data.status),
+    score,
+    percentage,
+    requiresManualReview:
+      Boolean(data.requiresManualReview) ||
+      Number(pendingManualReviewCount ?? 0) > 0,
+    submittedAt: timestampToIso(data.submittedAt),
+    startedAt: timestampToIso(data.startedAt),
+    emailSent: Boolean(data.resultEmailSent ?? data.emailSent),
+  };
+}
+
+async function listExamCandidateResults(examId: string) {
+  const snapshot = await getAdminDb()
+    .collection("exams")
+    .doc(examId)
+    .collection("candidates")
+    .get();
+
+  return snapshot.docs
+    .map((document) =>
+      serializeExamCandidateResult(document.id, document.data()),
+    )
+    .sort((firstCandidate, secondCandidate) => {
+      const firstDate =
+        firstCandidate.submittedAt ?? firstCandidate.startedAt ?? "";
+      const secondDate =
+        secondCandidate.submittedAt ?? secondCandidate.startedAt ?? "";
+
+      return secondDate.localeCompare(firstDate);
+    });
+}
+
+function buildExamResultSummary({
+  candidates,
+  passMark,
+}: {
+  candidates: ExamCandidateResultDTO[];
+  passMark: number;
+}): ExamResultSummary {
+  const completedCandidates = candidates.filter((candidate) =>
+    hasCompletedAttempt(candidate.status),
+  );
+  const scoredCandidates = completedCandidates.filter(
+    (candidate) => candidate.score !== null,
+  );
+  const percentageCandidates = completedCandidates.filter(
+    (candidate) => candidate.percentage !== null,
+  );
+
+  return {
+    totalAttempts: candidates.length,
+    completedAttempts: completedCandidates.length,
+    averageScore:
+      scoredCandidates.length > 0
+        ? scoredCandidates.reduce(
+            (total, candidate) => total + Number(candidate.score ?? 0),
+            0,
+          ) / scoredCandidates.length
+        : null,
+    averagePercentage:
+      percentageCandidates.length > 0
+        ? percentageCandidates.reduce(
+            (total, candidate) => total + Number(candidate.percentage ?? 0),
+            0,
+          ) / percentageCandidates.length
+        : null,
+    pendingManualReviews: candidates.filter(
+      (candidate) =>
+        candidate.requiresManualReview || candidate.status === "pending_review",
+    ).length,
+    passCount: completedCandidates.filter(
+      (candidate) => Number(candidate.percentage ?? -1) >= passMark,
+    ).length,
+  };
+}
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -278,19 +417,20 @@ export default async function AdminExamOverviewPage({
   params: Promise<{ examId: string }>;
 }) {
   const { examId } = await params;
-  const overview = await getAdminExamOverview(examId);
+  const [exam, assignmentSummary, candidates] = await Promise.all([
+    getAdminExamById(examId),
+    getExamAssignmentSummary(examId),
+    listExamCandidateResults(examId),
+  ]);
 
-  if (!overview) {
+  if (!exam) {
     notFound();
   }
 
-  const {
-    exam,
-    assignmentSummary,
-    resultSummary,
+  const resultSummary = buildExamResultSummary({
     candidates,
-    isUsingDummyResults,
-  } = overview;
+    passMark: exam.passMark,
+  });
   const accessCode = assignmentSummary.sharedAccessCode?.code ?? "Not created";
   const totalCandidates = Math.max(
     assignmentSummary.totalReachableCandidates,
@@ -433,11 +573,6 @@ export default async function AdminExamOverviewPage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-sm text-slate-500">
-              {isUsingDummyResults ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-blue-700">
-                  Demo data
-                </span>
-              ) : null}
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5">
                 Exam-scoped candidates
               </span>
