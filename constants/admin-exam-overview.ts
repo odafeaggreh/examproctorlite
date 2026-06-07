@@ -1,5 +1,6 @@
 import type { ExamCandidateResultDTO } from "@/lib/dto/exam-results";
 import type {
+  AdminCandidateExamHistoryItem,
   ExamAttemptStatus,
   QuestionType,
 } from "@/lib/types/exam-management";
@@ -42,6 +43,7 @@ export type DummyExamCandidateAnswerRecord = {
   order: number;
   questionType: QuestionType;
   questionTitle: string;
+  questionOptions?: Array<{ value: string; isCorrect: boolean }>;
   response: string | string[];
   correctAnswer?: string | string[];
   points: number;
@@ -56,6 +58,11 @@ export type DummyExamCandidateAnswerRecord = {
   submittedAt: string | null;
   updatedAt: string | null;
   path: string;
+};
+
+type DummyExamHistoryExam = {
+  id: string;
+  title: string;
 };
 
 type DummyExamCandidateBlueprint = Omit<
@@ -214,6 +221,12 @@ const OBJECTIVE_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     order: 1,
     questionTitle: "Which protocol is commonly used to secure web traffic?",
     questionType: "multiple_choice",
+    questionOptions: [
+      { value: "HTTP", isCorrect: false },
+      { value: "HTTPS", isCorrect: true },
+      { value: "FTP", isCorrect: false },
+      { value: "SMTP", isCorrect: false },
+    ],
     response: "HTTPS",
     correctAnswer: "HTTPS",
     points: 10,
@@ -232,6 +245,12 @@ const OBJECTIVE_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     order: 2,
     questionTitle: "Select the valid authentication factors.",
     questionType: "checkboxes",
+    questionOptions: [
+      { value: "Password", isCorrect: true },
+      { value: "One-time code", isCorrect: true },
+      { value: "Security key", isCorrect: true },
+      { value: "Public username", isCorrect: false },
+    ],
     response: ["Password", "One-time code"],
     correctAnswer: ["Password", "One-time code", "Security key"],
     points: 15,
@@ -251,6 +270,11 @@ const OBJECTIVE_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     order: 3,
     questionTitle: "Choose the best description of a firewall.",
     questionType: "dropdown",
+    questionOptions: [
+      { value: "A password storage tool", isCorrect: false },
+      { value: "A network traffic filter", isCorrect: true },
+      { value: "A file compression format", isCorrect: false },
+    ],
     response: "A network traffic filter",
     correctAnswer: "A network traffic filter",
     points: 10,
@@ -274,6 +298,8 @@ const PENDING_MANUAL_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     questionType: "short_text",
     response:
       "If one website is breached, attackers can try the same password on other accounts.",
+    correctAnswer:
+      "Password reuse is risky because one breached password can be reused to access other accounts.",
     points: 15,
     autoPoints: null,
     manualPoints: null,
@@ -293,6 +319,8 @@ const PENDING_MANUAL_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     questionType: "paragraph",
     response:
       "The team should avoid clicking links, report the message to security, preserve evidence, and warn affected users while the message is investigated.",
+    correctAnswer:
+      "Do not interact with the email, report it to security, preserve evidence, and warn affected users while the threat is investigated.",
     points: 20,
     autoPoints: null,
     manualPoints: null,
@@ -314,6 +342,8 @@ const REVIEWED_MANUAL_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     questionType: "short_text",
     response:
       "If one website is breached, attackers can try the same password on other accounts.",
+    correctAnswer:
+      "Password reuse is risky because one breached password can be reused to access other accounts.",
     points: 15,
     autoPoints: null,
     manualPoints: 13,
@@ -335,6 +365,8 @@ const REVIEWED_MANUAL_ANSWER_BLUEPRINTS: DummyAnswerBlueprint[] = [
     questionType: "paragraph",
     response:
       "The team should avoid clicking links, report the message to security, preserve evidence, and warn affected users while the message is investigated.",
+    correctAnswer:
+      "Do not interact with the email, report it to security, preserve evidence, and warn affected users while the threat is investigated.",
     points: 20,
     autoPoints: null,
     manualPoints: 17,
@@ -405,6 +437,28 @@ function buildExamCandidateRecord({
   };
 }
 
+function buildFallbackExamCandidateRecord({
+  candidateEmail,
+  candidateId,
+  candidateName,
+  examId,
+}: {
+  candidateEmail?: string;
+  candidateId: string;
+  candidateName?: string;
+  examId: string;
+}): DummyExamCandidateRecord {
+  return buildExamCandidateRecord({
+    blueprint: {
+      ...DUMMY_EXAM_CANDIDATE_BLUEPRINTS[1],
+      candidateEmail: candidateEmail || "demo.candidate@example.com",
+      candidateId,
+      candidateName: candidateName || "Demo Candidate",
+    },
+    examId,
+  });
+}
+
 function buildAnswerRecord({
   blueprint,
   candidateId,
@@ -473,15 +527,26 @@ export function getDummyExamCandidateResults(examId: string) {
 }
 
 export function getDummyExamCandidateAnswers({
+  candidateEmail,
   candidateId,
+  candidateName,
   examId,
 }: {
+  candidateEmail?: string;
   candidateId: string;
+  candidateName?: string;
   examId: string;
 }) {
-  const candidate = getDummyExamCandidates(examId).find(
-    (candidateRecord) => candidateRecord.candidateId === candidateId,
-  );
+  const candidate =
+    getDummyExamCandidates(examId).find(
+      (candidateRecord) => candidateRecord.candidateId === candidateId,
+    ) ??
+    buildFallbackExamCandidateRecord({
+      candidateEmail,
+      candidateId,
+      candidateName,
+      examId,
+    });
 
   if (!candidate || candidate.status === "not_started") {
     return [];
@@ -500,22 +565,58 @@ export function getDummyExamCandidateAnswers({
 }
 
 export function getDummyCandidateExamResult({
+  candidateEmail,
   candidateId,
+  candidateName,
   examId,
 }: {
+  candidateEmail?: string;
   candidateId: string;
+  candidateName?: string;
   examId: string;
 }) {
-  const candidate = getDummyExamCandidates(examId).find(
-    (candidateRecord) => candidateRecord.candidateId === candidateId,
-  );
-
-  if (!candidate) {
-    return null;
-  }
+  const candidate =
+    getDummyExamCandidates(examId).find(
+      (candidateRecord) => candidateRecord.candidateId === candidateId,
+    ) ??
+    buildFallbackExamCandidateRecord({
+      candidateEmail,
+      candidateId,
+      candidateName,
+      examId,
+    });
 
   return {
     candidate: toDummyCandidateResultDTO(candidate),
-    answers: getDummyExamCandidateAnswers({ candidateId, examId }),
+    answers: getDummyExamCandidateAnswers({
+      candidateEmail,
+      candidateId,
+      candidateName,
+      examId,
+    }),
   };
+}
+
+export function getDummyCandidateExamHistory({
+  exams,
+}: {
+  candidateId: string;
+  exams: DummyExamHistoryExam[];
+}): AdminCandidateExamHistoryItem[] {
+  return exams.slice(0, 3).map((exam, index) => {
+    const blueprint =
+      DUMMY_EXAM_CANDIDATE_BLUEPRINTS[
+        (index + 1) % DUMMY_EXAM_CANDIDATE_BLUEPRINTS.length
+      ];
+
+    return {
+      examId: exam.id,
+      examTitle: exam.title,
+      percentage: blueprint.percentage,
+      requiresManualReview: blueprint.requiresManualReview,
+      score: blueprint.score,
+      status: blueprint.status,
+      submittedAt: blueprint.submittedAt,
+    };
+  });
 }

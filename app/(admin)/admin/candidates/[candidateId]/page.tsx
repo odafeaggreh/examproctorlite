@@ -6,6 +6,7 @@ import { CandidateMetricCard } from "@/components/admin/candidates/candidate-met
 import { CandidateProfileDetailsCard } from "@/components/admin/candidates/candidate-profile-details-card";
 import { CandidateProfileHeader } from "@/components/admin/candidates/candidate-profile-header";
 import { getAdminCandidateById } from "@/lib/dal/candidates";
+import { getAdminExamList } from "@/lib/dal/exams";
 import { formatCandidateScore } from "@/lib/format/candidates";
 
 export default async function AdminCandidateProfilePage({
@@ -14,7 +15,10 @@ export default async function AdminCandidateProfilePage({
   params: Promise<{ candidateId: string }>;
 }) {
   const { candidateId } = await params;
-  const candidate = await getAdminCandidateById(candidateId);
+  const [candidate, exams] = await Promise.all([
+    getAdminCandidateById(candidateId),
+    getAdminExamList(),
+  ]);
 
   if (!candidate) {
     notFound();
@@ -52,7 +56,7 @@ export default async function AdminCandidateProfilePage({
       </div>
 
       <CandidateProfileDetailsCard candidate={candidate} />
-      <CandidateExamHistoryTable candidate={candidate} />
+      <CandidateExamHistoryTable candidate={candidate} fallbackExams={exams} />
     </div>
   );
 }
