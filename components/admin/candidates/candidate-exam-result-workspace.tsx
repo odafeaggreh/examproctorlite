@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import type { DummyExamCandidateAnswerRecord } from "@/constants/admin-exam-overview";
 import { CandidateAnswerTable } from "@/components/admin/candidates/candidate-answer-table";
 import { CandidateMetricCard } from "@/components/admin/candidates/candidate-metric-card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +31,10 @@ import {
   formatExamResultDateTime,
   formatExamResultStatus,
 } from "@/lib/format/exam-results";
-import type { ExamAttemptStatus } from "@/lib/types/exam-management";
+import type {
+  AdminCandidateExamAnswer,
+  ExamAttemptStatus,
+} from "@/lib/types/exam-management";
 
 type ReviewDraft = {
   feedback: string;
@@ -52,7 +54,7 @@ function attemptStatusVariant(status: ExamAttemptStatus) {
   return "outline" as const;
 }
 
-function getReviewDrafts(answers: DummyExamCandidateAnswerRecord[]) {
+function getReviewDrafts(answers: AdminCandidateExamAnswer[]) {
   return answers.reduce<Record<string, ReviewDraft>>((drafts, answer) => {
     drafts[answer.id] = {
       feedback: answer.feedback ?? "",
@@ -69,7 +71,7 @@ export function CandidateExamResultWorkspace({
 }: {
   exam: ExamListItemDTO;
   candidate: ExamCandidateResultDTO;
-  initialAnswers: DummyExamCandidateAnswerRecord[];
+  initialAnswers: AdminCandidateExamAnswer[];
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState(initialAnswers);
@@ -119,7 +121,7 @@ export function CandidateExamResultWorkspace({
     }));
   }
 
-  function saveReview(answer: DummyExamCandidateAnswerRecord) {
+  function saveReview(answer: AdminCandidateExamAnswer) {
     const draft = reviewDrafts[answer.id];
 
     if (!draft) {

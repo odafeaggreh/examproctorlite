@@ -32,6 +32,10 @@ export type ExamAttemptStatus =
   | "pending_review"
   | "finalized"
   | "released";
+export type CandidateAnswerReviewStatus =
+  | "auto_graded"
+  | "pending_review"
+  | "reviewed";
 
 export interface PlatformDefaults {
   defaultAccessCodeMaxUses: number;
@@ -218,6 +222,32 @@ export interface ExamCandidateRecord {
   updatedAt: string | null;
 }
 
+export interface ExamCandidateAnswerRecord {
+  id: string;
+  examId: string;
+  candidateId: string;
+  examCandidateId: string;
+  examQuestionId: string;
+  sourceQuestionId?: string;
+  order: number;
+  questionType: QuestionType;
+  questionTitle: string;
+  questionOptions: QuestionOptionRecord[];
+  response: string | string[];
+  correctAnswer?: string | string[];
+  points: number;
+  autoPoints: number | null;
+  manualPoints: number | null;
+  finalPoints: number | null;
+  isCorrect: boolean | null;
+  reviewStatus: CandidateAnswerReviewStatus;
+  reviewedBy?: string;
+  reviewedAt: string | null;
+  feedback?: string;
+  submittedAt: string | null;
+  updatedAt: string | null;
+}
+
 export interface AdminCandidateExamStats {
   assigned: number;
   taken: number;
@@ -248,6 +278,8 @@ export interface AdminCandidate {
   examStats: AdminCandidateExamStats;
   examHistory: AdminCandidateExamHistoryItem[];
 }
+
+export type AdminCandidateExamAnswer = ExamCandidateAnswerRecord;
 
 export interface CsvImportPreviewRow {
   email: string;

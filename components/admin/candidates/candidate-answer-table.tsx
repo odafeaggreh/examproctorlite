@@ -1,7 +1,7 @@
 import { FileText } from "lucide-react";
 
-import type { DummyExamCandidateAnswerRecord } from "@/constants/admin-exam-overview";
 import { CandidateAnswerReviewCard } from "@/components/admin/candidates/candidate-answer-review-card";
+import type { AdminCandidateExamAnswer } from "@/lib/types/exam-management";
 
 export function CandidateAnswerTable({
   answers,
@@ -11,12 +11,12 @@ export function CandidateAnswerTable({
   onFeedbackChange,
   onSave,
 }: {
-  answers: DummyExamCandidateAnswerRecord[];
+  answers: AdminCandidateExamAnswer[];
   emptyDescription?: string;
   emptyTitle?: string;
   getFeedback: (answerId: string) => string;
   onFeedbackChange: (answerId: string, value: string) => void;
-  onSave: (answer: DummyExamCandidateAnswerRecord) => void;
+  onSave: (answer: AdminCandidateExamAnswer) => void;
 }) {
   if (answers.length === 0) {
     return (

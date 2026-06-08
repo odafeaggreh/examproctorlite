@@ -1,9 +1,5 @@
 import { Check, Circle, Save } from "lucide-react";
 
-import type {
-  DummyCandidateAnswerReviewStatus,
-  DummyExamCandidateAnswerRecord,
-} from "@/constants/admin-exam-overview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,9 +10,13 @@ import {
   formatExamResultStatus,
   formatQuestionTypeLabel,
 } from "@/lib/format/exam-results";
+import type {
+  AdminCandidateExamAnswer,
+  CandidateAnswerReviewStatus,
+} from "@/lib/types/exam-management";
 import { cn } from "@/lib/utils";
 
-function reviewStatusVariant(status: DummyCandidateAnswerReviewStatus) {
+function reviewStatusVariant(status: CandidateAnswerReviewStatus) {
   if (status === "reviewed" || status === "auto_graded") {
     return "success" as const;
   }
@@ -28,15 +28,7 @@ function getResponseValues(response: string | string[]) {
   return Array.isArray(response) ? response : [response];
 }
 
-function getPointsLabel(answer: DummyExamCandidateAnswerRecord) {
-  if (answer.finalPoints === null) {
-    return `Pending / ${answer.points} pts`;
-  }
-
-  return `${answer.finalPoints}/${answer.points} pts`;
-}
-
-function getCorrectAnswerDisplay(answer: DummyExamCandidateAnswerRecord) {
+function getCorrectAnswerDisplay(answer: AdminCandidateExamAnswer) {
   if (answer.correctAnswer && answer.correctAnswer.length > 0) {
     return formatAnswerResponse(answer.correctAnswer);
   }
@@ -56,7 +48,7 @@ function getCorrectAnswerDisplay(answer: DummyExamCandidateAnswerRecord) {
 function CandidateQuestionOptions({
   answer,
 }: {
-  answer: DummyExamCandidateAnswerRecord;
+  answer: AdminCandidateExamAnswer;
 }) {
   if (!answer.questionOptions || answer.questionOptions.length === 0) {
     return null;
@@ -135,7 +127,7 @@ export function CandidateAnswerReviewCard({
   onFeedbackChange,
   onSave,
 }: {
-  answer: DummyExamCandidateAnswerRecord;
+  answer: AdminCandidateExamAnswer;
   feedback: string;
   onFeedbackChange: (value: string) => void;
   onSave: () => void;
@@ -162,9 +154,6 @@ export function CandidateAnswerReviewCard({
             {answer.questionTitle}
           </h3>
         </div>
-        {/* <div className="shrink-0 rounded-full bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700">
-          {getPointsLabel(answer)}
-        </div> */}
       </div>
 
       <CandidateQuestionOptions answer={answer} />

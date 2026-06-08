@@ -1,9 +1,7 @@
 import Link from "next/link";
 
-import { getDummyCandidateExamHistory } from "@/constants/admin-exam-overview";
 import type { AdminCandidate } from "@/lib/types/exam-management";
 import { CandidateExamStatusBadge } from "@/components/admin/candidates/candidate-badges";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -19,52 +17,22 @@ import {
   getAdminCandidateExamHref,
 } from "@/lib/format/candidates";
 import { formatDateTime } from "@/lib/format/date";
-import type { ExamListItemDTO } from "@/lib/dto/exams";
 
 export function CandidateExamHistoryTable({
   candidate,
-  fallbackExams = [],
 }: {
   candidate: AdminCandidate;
-  fallbackExams?: ExamListItemDTO[];
 }) {
-  const demoExamHistory =
-    candidate.examHistory.length === 0
-      ? getDummyCandidateExamHistory({
-          candidateId: candidate.uid,
-          exams: fallbackExams,
-        })
-      : [];
-  const examHistory =
-    candidate.examHistory.length > 0 ? candidate.examHistory : demoExamHistory;
-  const isDemoHistory =
-    candidate.examHistory.length === 0 && demoExamHistory.length > 0;
-
   return (
     <Card className="rounded-[28px] border-slate-200/80 bg-white shadow-none">
       <CardHeader className="border-b border-slate-100 pb-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="text-lg">Exam history</CardTitle>
-            <p className="mt-1 text-sm text-slate-500">
-              Exams linked to this candidate and their latest result state.
-            </p>
-          </div>
-          {isDemoHistory ? (
-            <Badge variant="outline" className="w-fit">
-              Demo data
-            </Badge>
-          ) : null}
-        </div>
-        {isDemoHistory ? (
-          <p className="mt-3 text-sm text-slate-500">
-            Temporary history is shown so this page can link into candidate exam
-            results while real submissions are still being wired.
-          </p>
-        ) : null}
+        <CardTitle className="text-lg">Exam history</CardTitle>
+        <p className="mt-1 text-sm text-slate-500">
+          Exams linked to this candidate and their latest result state.
+        </p>
       </CardHeader>
       <CardContent className="p-5">
-        {examHistory.length === 0 ? (
+        {candidate.examHistory.length === 0 ? (
           <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center text-sm text-slate-500">
             No exam history yet.
           </div>
@@ -91,7 +59,7 @@ export function CandidateExamHistoryTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {examHistory.map((exam) => (
+                {candidate.examHistory.map((exam) => (
                   <TableRow key={exam.examId}>
                     <TableCell className="px-5 py-4">
                       <p className="font-medium text-slate-950">

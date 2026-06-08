@@ -2,6 +2,8 @@ import "server-only";
 
 import {
   getCandidateUserRecord,
+  getExamCandidateRecord,
+  listExamCandidateAnswerRecords,
   listAllExamCandidateRecords,
   listCandidateUserRecords,
   listExamCandidateRecordsForCandidate,
@@ -12,6 +14,7 @@ import {
   toAdminCandidateDTO,
   toCandidateStatusDTO,
 } from "@/lib/dto/candidates";
+import { toExamCandidateResultFromCandidateDTO } from "@/lib/dto/exam-results";
 import type { CandidateRosterStatus } from "@/lib/types/exam-management";
 
 export async function getAdminCandidates() {
@@ -51,6 +54,27 @@ export async function getAdminCandidateById(candidateId: string) {
     exams,
     examCandidates,
   });
+}
+
+export async function getAdminCandidateExamResult({
+  candidateId,
+  examId,
+}: {
+  candidateId: string;
+  examId: string;
+}) {
+  const candidate = await getExamCandidateRecord({ candidateId, examId });
+
+  if (!candidate) {
+    return null;
+  }
+
+  const answers = await listExamCandidateAnswerRecords({ candidate });
+
+  return {
+    candidate: toExamCandidateResultFromCandidateDTO(candidate),
+    answers,
+  };
 }
 
 export async function updateAdminCandidateStatus({

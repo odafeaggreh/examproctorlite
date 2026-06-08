@@ -1,6 +1,8 @@
 import "server-only";
 
 import type {
+  AdminCandidateExamAnswer,
+  ExamCandidateRecord,
   ExamAttemptRecord,
   ExamAttemptStatus,
 } from "@/lib/types/exam-management";
@@ -26,6 +28,15 @@ export interface ExamResultSummaryDTO {
   averagePercentage: number | null;
   pendingManualReviews: number;
   passCount: number;
+}
+
+export interface AdminCandidateExamResultDTO {
+  candidate: ExamCandidateResultDTO;
+  answers: AdminCandidateExamAnswer[];
+}
+
+function toAttemptStatus(status: ExamCandidateRecord["status"]): ExamAttemptStatus {
+  return status === "graded" ? "finalized" : status;
 }
 
 function hasCompletedAttempt(status: ExamAttemptStatus) {
@@ -97,6 +108,24 @@ export function toExamCandidateResultDTO(
     submittedAt: attempt.submittedAt,
     startedAt: attempt.startedAt,
     emailSent: attempt.emailSent,
+  };
+}
+
+export function toExamCandidateResultFromCandidateDTO(
+  candidate: ExamCandidateRecord,
+): ExamCandidateResultDTO {
+  return {
+    id: candidate.id,
+    candidateId: candidate.candidateId,
+    candidateName: candidate.candidateName || "Unnamed candidate",
+    candidateEmail: candidate.candidateEmail || "No email",
+    status: toAttemptStatus(candidate.status),
+    score: candidate.score,
+    percentage: candidate.percentage,
+    requiresManualReview: candidate.requiresManualReview,
+    submittedAt: candidate.submittedAt,
+    startedAt: candidate.startedAt,
+    emailSent: candidate.resultEmailSent,
   };
 }
 
